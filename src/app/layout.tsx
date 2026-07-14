@@ -1,6 +1,6 @@
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
-// import Footer from "@/components/layout/Footer";
+import Footer from "@/components/layout/Footer";
 
 export default function RootLayout({
   children,
@@ -12,7 +12,7 @@ export default function RootLayout({
       <body>
         <Navbar />
         <main className="min-h-screen">{children}</main>
-        {/* <Footer /> */}
+        <Footer /> 
       </body>
     </html>
   );
