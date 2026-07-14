@@ -16,9 +16,9 @@ export default function PlantCard({ plant }: { plant: Plant }) {
       />
 
       <div className="p-5">
-        <h2 className="text-xl font-bold">{plant.title}</h2>
+        <h2 className="text-xl font-bold text-black">{plant.title}</h2>
 
-        <p className="text-gray-500 mt-2">{plant.category}</p>
+        <p className="text-gray-600 mt-2">{plant.category}</p>
 
         <span className="inline-block mt-3 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
           {plant.difficulty}
