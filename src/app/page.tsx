@@ -1,5 +1,5 @@
  import Hero from "@/components/home/herosection";
-// import FeaturedPlants from "@/components/home/FeaturedPlants";
+ import FeaturedPlants from "@/components/home/FeaturedPlants";
 // import Categories from "@/components/home/Categories";
 // import CareTips from "@/components/home/CareTips";
 // import Statistics from "@/components/home/Statistics";
@@ -8,10 +8,10 @@ export default function HomePage() {
   return (
     <>
        <Hero />
-      {/* <FeaturedPlants />
-      <Categories />
+       <FeaturedPlants />
+      {/* <Categories />
       <CareTips />
-      <Statistics />  */}
+      <Statistics />   */}
     </>
   );
 }
