@@ -1,4 +1,4 @@
-// import Hero from "@/components/home/Hero";
+ import Hero from "@/components/home/herosection";
 // import FeaturedPlants from "@/components/home/FeaturedPlants";
 // import Categories from "@/components/home/Categories";
 // import CareTips from "@/components/home/CareTips";
@@ -7,11 +7,11 @@
 export default function HomePage() {
   return (
     <>
-      {/* <Hero />
-      <FeaturedPlants />
+       <Hero />
+      {/* <FeaturedPlants />
       <Categories />
       <CareTips />
-      <Statistics /> */}
+      <Statistics />  */}
     </>
   );
 }
