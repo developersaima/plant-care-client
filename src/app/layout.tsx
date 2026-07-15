@@ -1,3 +1,5 @@
+import dns from "node:dns"
+dns.setServers(["8.8.8.8","8.8.1.1"])
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
