@@ -3,8 +3,8 @@
 import { useSession, signOut } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { LuSprout } from "react-icons/lu"; 
+import { useState, useRef, useEffect } from "react";
+import { LuSprout, LuLayoutDashboard, LuLogOut, LuUser } from "react-icons/lu";
 
 const links = [
   { name: "Home", href: "/" },
@@ -17,18 +17,27 @@ export default function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        
-        {/* Logo with Icon */}
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-green-700">
-          <LuSprout className="text-3xl" /> 
+          <LuSprout className="text-3xl" />
           <span>PlantCare</span>
         </Link>
 
-        {/* Desktop Main Menu (Middle) */}
         <div className="hidden md:flex items-center gap-8">
           {links.map((link) => (
             <Link
@@ -41,22 +50,37 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Right Side (Auth / User) */}
         <div className="hidden md:flex items-center gap-4">
           {session ? (
-            <div className="flex items-center gap-3 border-l pl-4">
-              <div className="text-right">
-                <p className="text-sm font-semibold text-black">{session.user.name}</p>
-                <p className="text-xs text-gray-500">{session.user.email}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200 overflow-hidden">
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200 overflow-hidden cursor-pointer hover:ring-2 ring-green-500 transition"
+              >
                 {session.user.image ? (
                   <img src={session.user.image} alt="User" className="w-full h-full object-cover" />
                 ) : (
                   <span>{session.user.name?.charAt(0).toUpperCase()}</span>
                 )}
-              </div>
-              <button onClick={() => signOut()} className="text-sm text-red-500 hover:underline">Logout</button>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-4 flex flex-col gap-3">
+                  <div className="border-b pb-2 flex items-center gap-2">
+                    <LuUser className="text-gray-400" />
+                    <div className="overflow-hidden">
+                      <p className="text-sm font-bold text-black truncate">{session.user.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+                    </div>
+                  </div>
+                  <Link href="/dashboard" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-green-700">
+                    <LuLayoutDashboard size={16} /> Dashboard
+                  </Link>
+                  <button onClick={() => { signOut(); setIsDropdownOpen(false); }} className="flex items-center gap-2 text-sm text-left text-red-600 font-medium">
+                    <LuLogOut size={16} /> Logout
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -66,13 +90,11 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile Toggle */}
         <button className="md:hidden text-2xl text-green-700" onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? "✕" : "☰"}
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden bg-white p-5 flex flex-col gap-4 border-t shadow-lg">
           {links.map((link) => (
@@ -82,14 +104,25 @@ export default function Navbar() {
           ))}
           <hr />
           {session ? (
-            <div className="flex flex-col gap-2">
-              <p className="font-bold">{session.user.name}</p>
-              <button onClick={() => signOut()} className="text-red-500 text-left">Logout</button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <LuUser className="text-gray-400" />
+                <div>
+                  <p className="font-bold text-sm">{session.user.name}</p>
+                  <p className="text-xs text-gray-500">{session.user.email}</p>
+                </div>
+              </div>
+              <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-2 text-green-700 font-bold">
+                <LuLayoutDashboard size={18} /> Dashboard
+              </Link>
+              <button onClick={() => signOut()} className="flex items-center gap-2 text-red-600 text-left font-medium">
+                <LuLogOut size={18} /> Logout
+              </button>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <Link href="/login" onClick={() => setIsOpen(false)}>Login</Link>
-              <Link href="/register" className="text-green-700 font-bold" onClick={() => setIsOpen(false)}>Register</Link>
+              <Link href="/login" onClick={() => setIsOpen(false)} className="font-medium">Login</Link>
+              <Link href="/register" onClick={() => setIsOpen(false)} className="text-green-700 font-bold">Register</Link>
             </div>
           )}
         </div>
