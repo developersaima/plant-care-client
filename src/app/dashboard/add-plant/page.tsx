@@ -1,3 +1,4 @@
+// app/add-plant/page.tsx
 import AddPlantForm from "@/components/dashboard/AddPlantForm";
 
 export default function AddPlantPage() {
