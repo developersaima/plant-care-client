@@ -4,6 +4,7 @@ import { useSession, signOut } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
+import { FaLeaf } from "react-icons/fa";
 import { LuSprout, LuLayoutDashboard, LuLogOut, LuUser } from "react-icons/lu";
 
 const links = [
@@ -34,8 +35,10 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white shadow-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-green-700">
-          <LuSprout className="text-3xl" />
-          <span>PlantCare</span>
+                      <div className="p-3 bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg shadow-green-700/20">
+                        <FaLeaf className="w-4 h-4 text-white" />
+                      </div>
+                      PlantCare
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
