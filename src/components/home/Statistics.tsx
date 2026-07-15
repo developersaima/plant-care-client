@@ -1,46 +1,36 @@
-import Link from "next/link";
+import React from 'react';
 
-export default function Hero() {
+const statsData = [
+  { label: "Total Plants", value: "1,250", color: "text-green-700" },
+  { label: "Active Users", value: "840", color: "text-blue-600" },
+  { label: "Pending Cares", value: "125", color: "text-yellow-600" },
+  { label: "Completed", value: "98%", color: "text-purple-600" },
+];
+
+const Statistics = () => {
   return (
-    <section className="bg-gradient-to-r from-green-100 to-green-50">
-      <div className="max-w-7xl mx-auto px-6 py-20 grid md:grid-cols-2 items-center gap-10">
-        <div>
-          <h1 className="text-5xl font-bold leading-tight text-gray-800">
-            Keep Your Plants
-            <span className="text-green-700"> Healthy</span> &
-            <span className="text-green-700"> Organized</span>
-          </h1>
-
-          <p className="mt-6 text-gray-600">
-            Manage your plants, track watering schedules, and learn proper
-            plant care with PlantCare Tracker.
-          </p>
-
-          <div className="mt-8 flex gap-4">
-            <Link
-              href="/explore"
-              className="bg-green-700 text-white px-6 py-3 rounded-lg hover:bg-green-800"
+    <section className="py-12 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-5">
+        <h2 className="text-3xl font-bold text-center mb-10 text-gray-800">
+          Platform Statistics
+        </h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statsData.map((stat, index) => (
+            <div 
+              key={index} 
+              className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300"
             >
-              Explore Plants
-            </Link>
-
-            <Link
-              href="/dashboard/add-plant"
-              className="border border-green-700 text-green-700 px-6 py-3 rounded-lg hover:bg-green-700 hover:text-white"
-            >
-              Add Plant
-            </Link>
-          </div>
-        </div>
-
-        <div>
-          <img
-            src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=800"
-            alt="plant"
-            className="rounded-2xl shadow-xl h-[450px] w-full object-cover"
-          />
+              <p className="text-gray-500 text-sm font-medium mb-2">{stat.label}</p>
+              <h3 className={`text-4xl font-extrabold ${stat.color}`}>
+                {stat.value}
+              </h3>
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
-}
+};
+
+export default Statistics;

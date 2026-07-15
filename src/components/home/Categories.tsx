@@ -23,8 +23,8 @@ const categories = [
 
 export default function Categories() {
   return (
-    <section className="max-w-7xl mx-auto px-6 py-20">
-      <h2 className="text-4xl font-bold text-center mb-12">
+    <section className="max-w-7xl mx-auto px-6 py-20 bg-gradient-to-r from-green-100 to-green-50">
+      <h2 className="text-4xl font-bold text-center mb-12 text-green-600">
         Plant Categories
       </h2>
 
@@ -32,7 +32,7 @@ export default function Categories() {
         {categories.map((item) => (
           <div
             key={item.title}
-            className="rounded-xl overflow-hidden shadow hover:shadow-lg duration-300"
+            className="rounded-xl overflow-hidden shadow hover:shadow-lg duration-300 bg-white"
           >
             <img
               src={item.image}
@@ -41,7 +41,7 @@ export default function Categories() {
             />
 
             <div className="p-5">
-              <h3 className="text-xl font-semibold">{item.title}</h3>
+              <h3 className="text-xl font-semibold text-green-600">{item.title}</h3>
             </div>
           </div>
         ))}

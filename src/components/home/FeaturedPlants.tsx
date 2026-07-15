@@ -37,8 +37,8 @@ const plants = [
 
 export default function FeaturedPlants() {
   return (
-    <section className="max-w-7xl mx-auto px-6 py-20">
-      <h2 className="text-4xl font-bold text-center mb-3">
+    <section className="max-w-7xl mx-auto px-6 py-20 bg-white">
+      <h2 className="text-4xl font-bold text-center mb-3 text-green-600">
         Featured Plants
       </h2>
 

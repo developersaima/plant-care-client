@@ -9,7 +9,7 @@
 export default function HomePage() {
   return (
     <>
-       <Hero/>
+        <Hero/> 
        <FeaturedPlants />
        <Categories />
       <CareTips />
