@@ -3,14 +3,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
 import PlantCard from "../shared/PlantCard";
 import toast from "react-hot-toast";
 import { FiArrowRight } from "react-icons/fi";
 
 type Plant = {
   _id?: string;
-  id?:string;
+  id?: string;
   title: string;
   category: string;
   difficulty: string;
@@ -34,27 +33,8 @@ export default function FeaturedPlants() {
   const fetchFeaturedPlants = async () => {
     setLoading(true);
     try {
-      const { data: tokenData } = await authClient.token();
-      const token = tokenData?.token;
-
-      if (!token) {
-        toast.error("Please login first");
-        router.push("/login");
-        return;
-      }
-
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const response = await fetch(`${apiUrl}/api/plants?manage=true&limit=4`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 403) {
-        toast.error("Session expired. Please login again.");
-        router.push("/login");
-        return;
-      }
+      const response = await fetch(`${apiUrl}/api/plants?limit=4`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch plants");
@@ -160,7 +140,7 @@ export default function FeaturedPlants() {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {plants.map((plant) => (
-          <PlantCard key={plant._id} plant={plant} />
+          <PlantCard key={plant._id || plant.id} plant={plant} />
         ))}
       </div>
 

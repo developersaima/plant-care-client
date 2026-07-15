@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
 import toast from "react-hot-toast";
 import { FiArrowLeft, FiDroplet, FiSun, FiTag, FiCalendar } from "react-icons/fi";
 import { LuLeaf } from "react-icons/lu";
@@ -39,36 +38,16 @@ export default function PlantDetailPage() {
   const fetchPlantDetails = async () => {
     setLoading(true);
     try {
-      console.log("1️⃣ Getting token...");
-      const { data: tokenData } = await authClient.token();
-      const token = tokenData?.token;
-
-      console.log("2️⃣ Token:", token ? "✅ Present" : "❌ Missing");
-      console.log("3️⃣ Plant ID:", plantId);
-
-      if (!token) {
-        toast.error("Please login first");
-        router.push("/login");
-        return;
-      }
+      console.log("1️⃣ Fetching plant details...");
+      console.log("2️⃣ Plant ID:", plantId);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const endpoint = `${apiUrl}/api/plants/${plantId}`;
-      console.log("4️⃣ Fetching from:", endpoint);
+      console.log("3️⃣ Fetching from:", endpoint);
 
-      const response = await fetch(endpoint, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(endpoint);
 
-      console.log("5️⃣ Response status:", response.status);
-
-      if (response.status === 403) {
-        toast.error("Session expired. Please login again.");
-        router.push("/login");
-        return;
-      }
+      console.log("4️⃣ Response status:", response.status);
 
       if (response.status === 404) {
         toast.error("Plant not found");
@@ -81,7 +60,7 @@ export default function PlantDetailPage() {
       }
 
       const data = await response.json();
-      console.log("6️⃣ Plant data received:", data);
+      console.log("5️⃣ Plant data received:", data);
       setPlant(data);
     } catch (error) {
       console.error("❌ Error fetching plant:", error);

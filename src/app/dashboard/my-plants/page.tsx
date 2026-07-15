@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import toast from "react-hot-toast";
-import { FiEye, FiEdit2, FiTrash2, FiSearch, FiX, FiDroplet, FiSun, FiTag } from "react-icons/fi";
+import { FiEye, FiSearch, FiX, FiDroplet } from "react-icons/fi";
 import { LuLeaf, LuSprout } from "react-icons/lu";
 
 type Plant = {
@@ -28,8 +28,6 @@ export default function MyPlantsPage() {
   const [category, setCategory] = useState("");
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPlants, setTotalPlants] = useState(0);
@@ -52,21 +50,21 @@ export default function MyPlantsPage() {
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const queryParams = new URLSearchParams({
-        manage: "false",
         page: currentPage.toString(),
         limit: "9",
       });
-      
+
       if (search) queryParams.append("search", search);
       if (category) queryParams.append("category", category);
 
-      const response = await fetch(`${apiUrl}/api/plants?${queryParams}`, {
+      const response = await fetch(`${apiUrl}/api/plants/user?${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        cache: "no-store",
       });
 
-      if (response.status === 403) {
+      if (response.status === 401 || response.status === 403) {
         toast.error("Session expired. Please login again.");
         router.push("/login");
         return;
@@ -88,52 +86,9 @@ export default function MyPlantsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-
-    try {
-      const { data: tokenData } = await authClient.token();
-      const token = tokenData?.token;
-
-      if (!token) {
-        toast.error("Please login first");
-        return;
-      }
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const response = await fetch(`${apiUrl}/api/plants/${deleteId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete plant");
-      }
-
-      toast.success("Plant deleted successfully!");
-      setIsDeleteModalOpen(false);
-      setDeleteId(null);
-      fetchPlants();
-    } catch (error) {
-      console.error("Error deleting plant:", error);
-      toast.error("Failed to delete plant");
-    }
-  };
-
   const handleView = (plant: Plant) => {
     setSelectedPlant(plant);
     setIsViewModalOpen(true);
-  };
-
-  const handleEdit = (id: string) => {
-    router.push(`/dashboard/edit-plant/${id}`);
-  };
-
-  const openDeleteModal = (id: string) => {
-    setDeleteId(id);
-    setIsDeleteModalOpen(true);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -183,13 +138,6 @@ export default function MyPlantsPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => router.push("/dashboard/add-plant")}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-xl transition-all shadow-lg shadow-green-700/30 hover:shadow-green-700/40"
-          >
-            <LuLeaf className="w-5 h-5" />
-            Add New Plant
-          </button>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
@@ -257,14 +205,6 @@ export default function MyPlantsPage() {
                   Clear filters
                 </button>
               )}
-              {!search && !category && (
-                <button
-                  onClick={() => router.push("/dashboard/add-plant")}
-                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-xl transition-all shadow-lg shadow-green-700/30"
-                >
-                  Add Your First Plant
-                </button>
-              )}
             </div>
           ) : (
             <>
@@ -272,7 +212,8 @@ export default function MyPlantsPage() {
                 {plants.map((plant) => (
                   <div
                     key={plant._id}
-                    className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                    onClick={() => handleView(plant)}
+                    className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
                   >
                     <div className="relative h-56 overflow-hidden bg-gray-100">
                       {plant.image ? (
@@ -286,25 +227,10 @@ export default function MyPlantsPage() {
                           <LuLeaf className="w-16 h-16 text-green-400" />
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <button
-                          onClick={() => handleView(plant)}
-                          className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-all shadow-lg"
-                        >
+                      <div className="absolute top-3 right-3">
+                        <span className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg">
                           <FiEye className="w-4 h-4 text-gray-700" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(plant._id)}
-                          className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-all shadow-lg"
-                        >
-                          <FiEdit2 className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(plant._id)}
-                          className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-all shadow-lg"
-                        >
-                          <FiTrash2 className="w-4 h-4 text-red-600" />
-                        </button>
+                        </span>
                       </div>
                       <div className="absolute bottom-3 left-3">
                         <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700 shadow-lg">
@@ -417,54 +343,12 @@ export default function MyPlantsPage() {
                   <p className="text-gray-700 mt-2 leading-relaxed">{selectedPlant.description}</p>
                 </div>
               </div>
-              <div className="pt-4 border-t border-gray-100 flex gap-3">
-                <button
-                  onClick={() => {
-                    setIsViewModalOpen(false);
-                    handleEdit(selectedPlant._id);
-                  }}
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all"
-                >
-                  Edit Plant
-                </button>
+              <div className="pt-4 border-t border-gray-100">
                 <button
                   onClick={() => setIsViewModalOpen(false)}
-                  className="flex-1 px-6 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all font-medium"
+                  className="w-full px-6 py-3 bg-green-700 hover:bg-green-800 text-white font-semibold rounded-xl transition-all"
                 >
                   Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-            <div className="p-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiTrash2 className="w-8 h-8 text-red-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Delete Plant</h3>
-              <p className="text-gray-500 text-center mb-6">
-                Are you sure you want to delete this plant? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setIsDeleteModalOpen(false);
-                    setDeleteId(null);
-                  }}
-                  className="flex-1 px-6 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-medium"
-                >
-                  Delete
                 </button>
               </div>
             </div>

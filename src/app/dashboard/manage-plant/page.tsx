@@ -20,7 +20,7 @@ type Plant = {
   updatedAt: string;
 };
 
-export default function ManagePlantsPage() {
+export default function ManagePlants() {
   const router = useRouter();
   const [plants, setPlants] = useState<Plant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,21 +52,21 @@ export default function ManagePlantsPage() {
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const queryParams = new URLSearchParams({
-        manage: "false",
         page: currentPage.toString(),
         limit: "10",
       });
-      
+
       if (search) queryParams.append("search", search);
       if (category) queryParams.append("category", category);
 
-      const response = await fetch(`${apiUrl}/api/plants?${queryParams}`, {
+      const response = await fetch(`${apiUrl}/api/plants/user?${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        cache: "no-store",
       });
 
-      if (response.status === 403) {
+      if (response.status === 401 || response.status === 403) {
         toast.error("Session expired. Please login again.");
         router.push("/login");
         return;
@@ -108,7 +108,7 @@ export default function ManagePlantsPage() {
         },
       });
 
-      if (response.status === 403) {
+      if (response.status === 401 || response.status === 403) {
         toast.error("You don't have permission to delete this plant");
         return;
       }
@@ -120,7 +120,12 @@ export default function ManagePlantsPage() {
       toast.success("Plant deleted successfully!");
       setIsDeleteModalOpen(false);
       setDeleteId(null);
-      fetchPlants();
+
+      if (plants.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      } else {
+        fetchPlants();
+      }
     } catch (error) {
       console.error("Error deleting plant:", error);
       toast.error("Failed to delete plant");
@@ -150,7 +155,7 @@ export default function ManagePlantsPage() {
               <LuLeaf className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Manage Plants</h1>
+              <h1 className="text-3xl font-bold text-gray-800">My Plants</h1>
               <p className="text-sm text-gray-500 mt-1">
                 {totalPlants} {totalPlants === 1 ? "plant" : "plants"} in your collection
               </p>
@@ -255,10 +260,7 @@ export default function ManagePlantsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {plants.map((plant) => (
-                    <tr
-                      key={plant._id}
-                      className="hover:bg-green-50/50 transition-colors group"
-                    >
+                    <tr key={plant._id} className="hover:bg-green-50/50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {plant.image ? (

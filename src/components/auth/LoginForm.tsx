@@ -63,7 +63,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-md py-16">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="bg-white shadow-2xl rounded-2xl p-8 border border-gray-100"

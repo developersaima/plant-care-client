@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
 import toast from "react-hot-toast";
 import { FiSearch, FiFilter, FiX, FiEye } from "react-icons/fi";
 import { LuLeaf } from "react-icons/lu";
@@ -26,7 +25,6 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
-  const [difficulty, setDifficulty] = useState("");
   const [sort, setSort] = useState("-1");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -35,23 +33,13 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchPlants();
-  }, [search, category, difficulty, sort, currentPage]);
+  }, [search, category, sort, currentPage]);
 
   const fetchPlants = async () => {
     setLoading(true);
     try {
-      const { data: tokenData } = await authClient.token();
-      const token = tokenData?.token;
-
-      if (!token) {
-        toast.error("Please login first");
-        router.push("/login");
-        return;
-      }
-
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const queryParams = new URLSearchParams({
-        manage: "true",
         page: currentPage.toString(),
         limit: "9",
         sort: sort,
@@ -60,17 +48,7 @@ export default function ExplorePage() {
       if (search) queryParams.append("search", search);
       if (category) queryParams.append("category", category);
 
-      const response = await fetch(`${apiUrl}/api/plants?${queryParams}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 403) {
-        toast.error("Session expired. Please login again.");
-        router.push("/login");
-        return;
-      }
+      const response = await fetch(`${apiUrl}/api/plants?${queryParams}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch plants");
@@ -127,7 +105,6 @@ export default function ExplorePage() {
   const clearFilters = () => {
     setSearch("");
     setCategory("");
-    setDifficulty("");
     setCurrentPage(1);
   };
 
@@ -165,7 +142,7 @@ export default function ExplorePage() {
           >
             <FiFilter className="w-5 h-5" />
             Filters
-            {(category || difficulty) && (
+            {category && (
               <span className="w-2 h-2 bg-green-600 rounded-full"></span>
             )}
           </button>
@@ -214,24 +191,8 @@ export default function ExplorePage() {
                   <option value="Tree">🌲 Tree</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
-                <select
-                  value={difficulty}
-                  onChange={(e) => {
-                    setDifficulty(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">All Difficulties</option>
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
-                </select>
-              </div>
             </div>
-            {(category || difficulty) && (
+            {category && (
               <button
                 onClick={clearFilters}
                 className="mt-4 text-sm text-green-700 hover:text-green-800 font-medium"
@@ -256,11 +217,11 @@ export default function ExplorePage() {
             </div>
             <h3 className="text-2xl font-semibold text-gray-700 mb-2">No plants found</h3>
             <p className="text-gray-500 text-center max-w-md">
-              {search || category || difficulty
+              {search || category
                 ? "Try adjusting your search or filter criteria"
                 : "No plants available at the moment"}
             </p>
-            {(search || category || difficulty) && (
+            {(search || category) && (
               <button
                 onClick={clearFilters}
                 className="mt-4 text-green-700 hover:text-green-800 font-medium"
