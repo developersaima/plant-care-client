@@ -1,12 +1,15 @@
 "use client";
 
+import { signIn } from "@/lib/auth-client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-
-type LoginData = {
+import toast from "react-hot-toast";
+interface LoginData {
   email: string;
   password: string;
-};
+}
+
 
 export default function LoginForm() {
   const {
@@ -15,10 +18,25 @@ export default function LoginForm() {
     formState: { errors },
   } = useForm<LoginData>();
 
-  const onSubmit = (data: LoginData) => {
-    console.log(data);
-  };
-
+const router= useRouter()
+const onSubmit = async (data: LoginData) => {
+  await signIn.email(
+    {
+      email: data.email, 
+      password: data.password,
+      callbackURL: "/",
+    },
+    {
+      onSuccess: () => {
+        toast.success("Login successful!");
+        router.push("/");
+      },
+      onError: (ctx: { error: { message: string } }) => {
+        toast.error(ctx.error.message || "Login failed!");
+      },
+    }
+  );
+};
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
