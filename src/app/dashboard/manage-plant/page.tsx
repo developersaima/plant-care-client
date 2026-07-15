@@ -52,7 +52,7 @@ export default function ManagePlantsPage() {
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const queryParams = new URLSearchParams({
-        manage: "true",
+        manage: "false",
         page: currentPage.toString(),
         limit: "10",
       });
@@ -107,6 +107,11 @@ export default function ManagePlantsPage() {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 403) {
+        toast.error("You don't have permission to delete this plant");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to delete plant");
@@ -167,7 +172,7 @@ export default function ManagePlantsPage() {
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search plants..."
+                  placeholder="Search your plants..."
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
@@ -199,7 +204,7 @@ export default function ManagePlantsPage() {
             <div className="flex items-center justify-center py-20">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-green-700/20 border-t-green-700 rounded-full animate-spin"></div>
-                <p className="text-gray-500">Loading plants...</p>
+                <p className="text-gray-500">Loading your plants...</p>
               </div>
             </div>
           ) : plants.length === 0 ? (
@@ -211,7 +216,7 @@ export default function ManagePlantsPage() {
               <p className="text-gray-500 text-center max-w-md">
                 {search || category
                   ? "Try adjusting your search or filter criteria"
-                  : "Start by adding your first plant to the collection"}
+                  : "You haven't added any plants to your collection yet"}
               </p>
               {(search || category) && (
                 <button
@@ -249,7 +254,7 @@ export default function ManagePlantsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {plants.map((plant, index) => (
+                  {plants.map((plant) => (
                     <tr
                       key={plant._id}
                       className="hover:bg-green-50/50 transition-colors group"
@@ -322,7 +327,7 @@ export default function ManagePlantsPage() {
           )}
 
           {!loading && plants.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-sm text-gray-500">
                 Showing {plants.length} of {totalPlants} plants
               </p>

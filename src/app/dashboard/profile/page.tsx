@@ -8,27 +8,16 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import {
   FaEnvelope,
-  FaCalendarAlt,
-  FaClock,
   FaCheckCircle,
   FaLeaf,
-  FaUserEdit,
-  FaCamera,
   FaUsers,
   FaHeart,
   FaSeedling,
+  FaCamera,
 } from "react-icons/fa";
-import {
-  FiEdit2,
-  FiSave,
-  FiX,
-  FiUser,
-  FiMail,
-  FiCalendar,
-  FiDroplet,
-  FiSun,
-  FiTrendingUp,
-} from "react-icons/fi";
+import { FiEdit2, FiSave, FiX, FiDroplet, FiTrendingUp } from "react-icons/fi";
+
+const IMAGEBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_KEY;
 
 type UserProfile = {
   id: string;
@@ -36,8 +25,6 @@ type UserProfile = {
   email: string;
   image?: string;
   emailVerified?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 type PlantStats = {
@@ -55,14 +42,16 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [plantStats, setPlantStats] = useState<PlantStats>({
     total: 0,
     categories: 0,
     cared: 0,
     watering: 0,
-    growth: "+24%",
+    growth: "+0%",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -74,60 +63,30 @@ export default function ProfilePage() {
   const fetchUserProfile = async () => {
     setLoading(true);
     try {
-      const { data: tokenData } = await authClient.token();
-      const token = tokenData?.token;
-
-      if (!token) {
-        toast.error("Please login first");
-        router.push("/login");
-        return;
-      }
-
       const { data: session } = await authClient.getSession();
       
       if (session?.user) {
-        setUser({
+        const userData = {
           id: session.user.id,
-          name: session.user.name || "Plant Lover",
+          name: session.user.name || "",
           email: session.user.email || "",
           image: session.user.image || "",
           emailVerified: session.user.emailVerified || false,
-          // createdAt: session.user.createdAt || new Date().toISOString(),
-          // updatedAt: session.user.updatedAt || new Date().toISOString(),
-        });
+        };
+        setUser(userData);
         setFormData({
-          name: session.user.name || "",
-          email: session.user.email || "",
+          name: userData.name,
         });
+        if (userData.image) {
+          setImagePreview(userData.image);
+        }
       } else {
-        // Fallback data
-        setUser({
-          id: "1",
-          name: "Plant Lover",
-          email: "user@plantcare.com",
-          emailVerified: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        setFormData({
-          name: "Plant Lover",
-          email: "user@plantcare.com",
-        });
+        toast.error("Please login first");
+        router.push("/login");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      setUser({
-        id: "1",
-        name: "Plant Lover",
-        email: "user@plantcare.com",
-        emailVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      setFormData({
-        name: "Plant Lover",
-        email: "user@plantcare.com",
-      });
+      toast.error("Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -137,24 +96,23 @@ export default function ProfilePage() {
     try {
       const { data: tokenData } = await authClient.token();
       const token = tokenData?.token;
-
       if (!token) return;
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const response = await fetch(`${apiUrl}/api/dashboard/stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
         const data = await response.json();
+        const total = data.totalPlants || 0;
+        const categories = data.stats?.length || 0;
         setPlantStats({
-          total: data.totalPlants || 0,
-          categories: data.stats?.length || 0,
-          cared: Math.floor((data.totalPlants || 0) * 0.85),
-          watering: Math.floor((data.totalPlants || 0) * 0.7),
-          growth: "+24%",
+          total: total,
+          categories: categories,
+          cared: Math.floor(total * 0.85),
+          watering: Math.floor(total * 0.7),
+          growth: total > 0 ? `+${Math.round((total / 12) * 100)}%` : "+0%",
         });
       }
     } catch (error) {
@@ -162,61 +120,129 @@ export default function ProfilePage() {
     }
   };
 
-  const handleEditToggle = () => {
-    if (isEditing) {
-      setFormData({
-        name: user?.name || "",
-        email: user?.email || "",
-      });
+  const uploadImageToImageBB = async (file: File) => {
+    if (!IMAGEBB_API_KEY) {
+      toast.error("ImgBB API Key is missing!");
+      return null;
     }
-    setIsEditing(!isEditing);
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const imageUrl = data.data.url;
+        setImagePreview(imageUrl);
+        toast.success("Image uploaded successfully!");
+        return imageUrl;
+      } else {
+        throw new Error(data.error?.message || "Image upload failed");
+      }
+    } catch (error) {
+      console.error("Image upload error:", error);
+      toast.error("Failed to upload image");
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please upload a valid image file (JPEG, PNG, GIF, WEBP)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size should be less than 5MB");
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      setUser({
-        ...user!,
-        name: formData.name,
-        email: formData.email,
-      });
-      
-      toast.success("Profile updated successfully! 🌿");
-      setIsEditing(false);
+      let imageUrl = user?.image || "";
+
+      if (imageFile) {
+        const uploadedUrl = await uploadImageToImageBB(imageFile);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        } else {
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const { error } = await authClient.updateUser(
+        {
+          name: formData.name,
+          image: imageUrl,
+        },
+        {
+          onSuccess: () => {
+            setUser({
+              ...user!,
+              name: formData.name,
+              image: imageUrl,
+            });
+            toast.success("Profile updated successfully! 🌿");
+            setIsEditing(false);
+            setIsSaving(false);
+          },
+          onError: (ctx) => {
+            toast.error(ctx?.error?.message || "Failed to update profile");
+            setIsSaving(false);
+          },
+        }
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error("Failed to update profile");
-    } finally {
       setIsSaving(false);
     }
   };
 
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setFormData({ name: user?.name || "" });
+      setImagePreview(user?.image || null);
+      setImageFile(null);
+    }
+    setIsEditing(!isEditing);
+  };
+
   const getInitials = (name: string) => {
+    if (!name) return "U";
     return name
       .split(" ")
       .slice(0, 2)
       .map((word) => word[0])
       .join("")
       .toUpperCase();
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   if (loading) {
@@ -231,16 +257,25 @@ export default function ProfilePage() {
             <div className="space-y-4 mt-4">
               <div className="h-6 bg-gray-200 rounded w-32 mx-auto animate-pulse"></div>
               <div className="h-4 bg-gray-200 rounded w-48 mx-auto animate-pulse"></div>
-              <div className="space-y-3 mt-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex justify-between">
-                    <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                    <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/30 to-gray-50 px-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-700 mb-2">Not Logged In</h2>
+          <p className="text-gray-500 mb-4">Please login to view your profile</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all"
+          >
+            Login
+          </button>
         </div>
       </div>
     );
@@ -250,36 +285,40 @@ export default function ProfilePage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/30 to-gray-50 px-4 py-8">
       <div className="w-[380px] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
 
-        {/* TOP DESIGN - Green Gradient */}
+        {/* TOP DESIGN */}
         <div className="h-28 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 relative">
 
-          {/* Stats Badges on Top */}
           <div className="absolute top-3 right-3 flex gap-2">
-            <div className="bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white font-medium flex items-center gap-1">
-              <FaSeedling className="w-3 h-3" />
-              {plantStats.total}
             </div>
-            <div className="bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white font-medium flex items-center gap-1">
-              <FaHeart className="w-3 h-3" />
-              {plantStats.cared}
-            </div>
-          </div>
 
           {/* Profile Avatar */}
           <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
-            <div className="w-20 h-20 rounded-full ring-4 ring-white overflow-hidden bg-white shadow-lg">
-              {user?.image ? (
+            <div className="w-20 h-20 rounded-full ring-4 ring-white overflow-hidden bg-white shadow-lg relative group">
+              {imagePreview ? (
                 <Image
-                  src={user.image}
+                  src={imagePreview}
                   alt={user.name || "User"}
                   width={80}
                   height={80}
                   className="object-cover rounded-full"
+                  unoptimized={imagePreview.includes("googleusercontent.com")}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-500 to-teal-600 text-white font-bold text-2xl">
                   {getInitials(user?.name || "User")}
                 </div>
+              )}
+              {isEditing && (
+                <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                  <FaCamera className="w-6 h-6 text-white" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
               )}
             </div>
           </div>
@@ -290,9 +329,17 @@ export default function ProfilePage() {
 
           {/* Name & Edit Button */}
           <div className="flex items-center justify-center gap-3">
-            <h2 className="text-xl font-bold text-gray-800">
-              {user?.name}
-            </h2>
+            {isEditing ? (
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="text-xl font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 text-center focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent w-48"
+                placeholder="Your name"
+              />
+            ) : (
+              <h2 className="text-xl font-bold text-gray-800">{user?.name || "User"}</h2>
+            )}
             <button
               onClick={handleEditToggle}
               className="text-green-600 hover:text-green-700 transition-colors"
@@ -302,134 +349,51 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Email */}
+          {/* Email - Disabled */}
           <p className="text-sm text-gray-500 flex items-center justify-center gap-1 mt-1">
             <FaEnvelope className="text-green-500" />
-            {user?.email}
+            {user?.email || "No email"}
           </p>
 
           {/* Verification Badge */}
-          {user?.emailVerified && (
+          {user?.emailVerified ? (
             <span className="inline-flex items-center gap-1 mt-3 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
               <FaCheckCircle /> Verified Account
             </span>
-          )}
-
-          {/* Edit Form */}
-          {isEditing && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <div className="space-y-3 text-left">
-                <div>
-                  <label className="text-xs font-medium text-gray-500">Full Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-sm"
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <FiSave className="w-4 h-4" />
-                        Save Changes
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* INFO GRID - Plant Care Stats */}
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="bg-green-50 rounded-xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-green-600 text-xs font-medium">
-                <FaLeaf />
-                Total Plants
-              </div>
-              <p className="text-xl font-bold text-gray-800 mt-1">{plantStats.total}</p>
-            </div>
-            <div className="bg-blue-50 rounded-xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-blue-600 text-xs font-medium">
-                <FaUsers />
-                Categories
-              </div>
-              <p className="text-xl font-bold text-gray-800 mt-1">{plantStats.categories}</p>
-            </div>
-            <div className="bg-yellow-50 rounded-xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-yellow-600 text-xs font-medium">
-                <FaHeart />
-                Cared For
-              </div>
-              <p className="text-xl font-bold text-gray-800 mt-1">{plantStats.cared}</p>
-            </div>
-            <div className="bg-purple-50 rounded-xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-purple-600 text-xs font-medium">
-                <FiDroplet />
-                Watering
-              </div>
-              <p className="text-xl font-bold text-gray-800 mt-1">{plantStats.watering}</p>
-            </div>
-          </div>
-
-          {/* Account Info */}
-          <div className="mt-6 space-y-2 text-left bg-gray-50 rounded-xl p-4">
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500 flex items-center gap-1">
-                <FaCalendarAlt className="text-green-500" />
-                Joined
-              </span>
-              <span className="text-gray-700">{formatDate(user?.createdAt)}</span>
-            </div>
-            <div className="flex justify-between text-xs border-t border-gray-200 pt-2">
-              <span className="text-gray-500 flex items-center gap-1">
-                <FaClock className="text-green-500" />
-                Last Updated
-              </span>
-              <span className="text-gray-700">{formatDate(user?.updatedAt)}</span>
-            </div>
-            <div className="flex justify-between text-xs border-t border-gray-200 pt-2">
-              <span className="text-gray-500 flex items-center gap-1">
-                <FiTrendingUp className="text-green-500" />
-                Growth Rate
-              </span>
-              <span className="text-green-600 font-semibold">{plantStats.growth}</span>
-            </div>
-          </div>
-
-          {/* Status Badge */}
-          <div className="mt-4 flex justify-center">
-            <span className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full ${
-              user?.emailVerified 
-                ? "bg-green-100 text-green-700" 
-                : "bg-yellow-100 text-yellow-700"
-            }`}>
-              <FaCheckCircle />
-              {user?.emailVerified ? "Verified Member" : "Pending Verification"}
+          ) : (
+            <span className="inline-flex items-center gap-1 mt-3 text-xs bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full">
+              <FaCheckCircle /> Pending Verification
             </span>
-          </div>
+          )}
+
+          {/* Save Button - Only shows when editing */}
+          {isEditing && (
+            <div className="mt-4">
+              <button
+                onClick={handleSave}
+                disabled={isSaving || isUploading}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isSaving || isUploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    {isUploading ? "Uploading Image..." : "Saving..."}
+                  </>
+                ) : (
+                  <>
+                    <FiSave className="w-4 h-4" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+              {isUploading && (
+                <p className="text-xs text-gray-500 mt-1">Uploading image...</p>
+              )}
+            </div>
+          )}
+
+      
+
 
         </div>
       </div>
