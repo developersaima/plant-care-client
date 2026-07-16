@@ -1,4 +1,3 @@
-// app/dashboard/profile/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -245,6 +244,15 @@ export default function ProfilePage() {
       .toUpperCase();
   };
 
+  const getImageUrl = (imagePath?: string) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    return `${apiUrl}${imagePath}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/30 to-gray-50 px-4">
@@ -285,18 +293,16 @@ export default function ProfilePage() {
     <div className="min-h-[50dvh] flex items-center justify-center bg-gradient-to-br from-green-50/30 to-gray-50 ">
       <div className="w-[380px] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
 
-        {/* TOP DESIGN */}
         <div className="h-28 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 relative">
 
           <div className="absolute top-3 right-3 flex gap-2">
-            </div>
+          </div>
 
-          {/* Profile Avatar */}
           <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
             <div className="w-20 h-20 rounded-full ring-4 ring-white overflow-hidden bg-white shadow-lg relative group">
               {imagePreview ? (
                 <Image
-                  src={imagePreview}
+                  src={getImageUrl(imagePreview) || imagePreview}
                   alt={user.name || "User"}
                   width={80}
                   height={80}
@@ -324,10 +330,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* BODY */}
         <div className="pt-14 px-6 pb-6 text-center">
 
-          {/* Name & Edit Button */}
           <div className="flex items-center justify-center gap-3">
             {isEditing ? (
               <input
@@ -349,13 +353,11 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Email - Disabled */}
           <p className="text-sm text-gray-500 flex items-center justify-center gap-1 mt-1">
             <FaEnvelope className="text-green-500" />
             {user?.email || "No email"}
           </p>
 
-          {/* Verification Badge */}
           {user?.emailVerified ? (
             <span className="inline-flex items-center gap-1 mt-3 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
               <FaCheckCircle /> Verified Account
@@ -366,7 +368,6 @@ export default function ProfilePage() {
             </span>
           )}
 
-          {/* Save Button - Only shows when editing */}
           {isEditing && (
             <div className="mt-4">
               <button
@@ -391,9 +392,6 @@ export default function ProfilePage() {
               )}
             </div>
           )}
-
-      
-
 
         </div>
       </div>
