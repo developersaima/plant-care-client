@@ -282,7 +282,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/30 to-gray-50 px-4 py-8">
+    <div className="min-h-[50dvh] flex items-center justify-center bg-gradient-to-br from-green-50/30 to-gray-50 ">
       <div className="w-[380px] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
 
         {/* TOP DESIGN */}

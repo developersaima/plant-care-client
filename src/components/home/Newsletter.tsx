@@ -14,7 +14,7 @@ export default function Newsletter() {
           <input
             type="email"
             placeholder="Enter your email"
-            className="px-5 py-3 rounded-lg text-black w-full md:w-96 outline-none"
+            className="px-5 py-3 rounded-lg text-black w-full md:w-96  border border-white bg-white"
           />
 
           <button className="bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-100">
