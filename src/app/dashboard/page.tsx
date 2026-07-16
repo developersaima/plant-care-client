@@ -1,16 +1,10 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import toast from "react-hot-toast";
-import {
-  FiPackage,
-  FiTrendingUp,
-  FiHeart,
-  FiCalendar,
-} from "react-icons/fi";
+import { FiPackage, FiTrendingUp, FiHeart, FiCalendar, FiClock } from "react-icons/fi";
 import {
   AreaChart,
   Area,
@@ -29,10 +23,7 @@ import { FaLeaf } from "react-icons/fa";
 
 type StatsData = {
   totalPlants: number;
-  stats: Array<{
-    _id: string;
-    count: number;
-  }>;
+  stats: Array<{ _id: string; count: number }>;
 };
 
 type Plant = {
@@ -49,10 +40,11 @@ type Plant = {
 };
 
 const COLORS = ["#22c55e", "#3b82f6", "#eab308", "#8b5cf6", "#ef4444", "#06b6d4", "#f472b6"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState<StatsData | null>(null);
+  const [stats, setStats] = useState<StatsData>({ totalPlants: 0, stats: [] });
   const [plants, setPlants] = useState<Plant[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,160 +66,87 @@ export default function DashboardPage() {
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      const [statsResponse, plantsResponse] = await Promise.all([
+      const [statsRes, plantsRes] = await Promise.all([
         fetch(`${apiUrl}/api/dashboard/stats`, {
           headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         }),
-        fetch(`${apiUrl}/api/plants?manage=false&limit=100`, {
+        fetch(`${apiUrl}/api/plants/user?limit=100`, {
           headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         }),
       ]);
 
-      if (statsResponse.status === 403 || plantsResponse.status === 403) {
+      if ([statsRes.status, plantsRes.status].some((s) => s === 401 || s === 403)) {
         toast.error("Session expired. Please login again.");
         router.push("/login");
         return;
       }
 
-      let userStats = null;
-      let userPlants = [];
-
-      if (statsResponse.ok) {
-        const data = await statsResponse.json();
-        userStats = data;
-        setStats(userStats);
-      }
-
-      if (plantsResponse.ok) {
-        const data = await plantsResponse.json();
-        userPlants = data.plants || [];
-        setPlants(userPlants);
-      }
-
-      if (!userStats || userStats.totalPlants === 0) {
-        setStats({
-          totalPlants: 0,
-          stats: [],
-        });
-        setPlants([]);
-      }
+      setStats(statsRes.ok ? await statsRes.json() : { totalPlants: 0, stats: [] });
+      setPlants(plantsRes.ok ? (await plantsRes.json()).plants || [] : []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      setStats({
-        totalPlants: 0,
-        stats: [],
-      });
+      toast.error("Failed to load dashboard");
+      setStats({ totalPlants: 0, stats: [] });
       setPlants([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getMonthlyData = () => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return months.map((month, index) => {
-      const count = plants.filter((plant) => {
-        const date = new Date(plant.createdAt);
-        return date.getMonth() === index && date.getFullYear() === new Date().getFullYear();
-      }).length;
-      return { name: month, plants: count };
-    });
-  };
-
-  const getCategoryData = () => {
-    if (!stats?.stats || stats.stats.length === 0) {
-      return [{ name: "No Data", value: 1 }];
-    }
-    return stats.stats.map((item) => ({
-      name: item._id,
-      value: item.count,
+  const getMonthlyCounts = () => {
+    const year = new Date().getFullYear();
+    return MONTHS.map((month, index) => ({
+      name: month,
+      count: plants.filter((p) => {
+        const d = new Date(p.createdAt);
+        return d.getMonth() === index && d.getFullYear() === year;
+      }).length,
     }));
   };
 
-  const getRecentActivity = () => {
-    if (plants.length === 0) return [];
-    return plants
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5)
-      .map((plant) => ({
-        id: plant._id,
-        action: `Added ${plant.title}`,
-        time: getTimeAgo(new Date(plant.createdAt)),
-        type: "add",
-      }));
+  const getCategoryData = () => {
+    if (!stats.stats.length) return [{ name: "No Data", value: 1 }];
+    return stats.stats.map((s) => ({ name: s._id, value: s.count }));
   };
 
   const getTimeAgo = (date: Date) => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return `${seconds} seconds ago`;
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} minutes ago`;
+    if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hours ago`;
+    if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
-    if (days < 7) return `${days} days ago`;
+    if (days < 7) return `${days}d ago`;
     const weeks = Math.floor(days / 7);
-    if (weeks < 4) return `${weeks} weeks ago`;
+    if (weeks < 4) return `${weeks}w ago`;
     const months = Math.floor(days / 30);
-    if (months < 12) return `${months} months ago`;
-    const years = Math.floor(days / 365);
-    return `${years} years ago`;
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
   };
 
-  const getMonthlyRevenue = () => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return months.map((month, index) => {
-      const count = plants.filter((plant) => {
-        const date = new Date(plant.createdAt);
-        return date.getMonth() === index && date.getFullYear() === new Date().getFullYear();
-      }).length;
-      return { name: month, revenue: count * 50 };
-    });
-  };
+  const getRecentActivity = () =>
+    [...plants]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map((p) => ({ id: p._id, title: p.title, category: p.category, time: getTimeAgo(new Date(p.createdAt)) }));
 
-  const totalPlants = stats?.totalPlants || 0;
-  const totalCategories = stats?.stats?.length || 0;
+  const totalPlants = stats.totalPlants;
+  const totalCategories = stats.stats.length;
   const growthRate = plants.length > 0 ? `+${Math.round((plants.length / 12) * 100)}%` : "0%";
   const healthScore = plants.length > 0 ? `${Math.min(100, 85 + Math.round((plants.length / 100) * 15))}%` : "85%";
 
   const statsData = [
-    {
-      label: "Total Plants",
-      value: totalPlants,
-      color: "text-green-700",
-      bg: "bg-green-50",
-      icon: FaLeaf,
-      border: "border-green-200",
-    },
-    {
-      label: "Categories",
-      value: totalCategories,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      icon: FiPackage,
-      border: "border-blue-200",
-    },
-    {
-      label: "Growth Rate",
-      value: growthRate,
-      color: "text-yellow-600",
-      bg: "bg-yellow-50",
-      icon: FiTrendingUp,
-      border: "border-yellow-200",
-    },
-    {
-      label: "Health Score",
-      value: healthScore,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      icon: FiHeart,
-      border: "border-purple-200",
-    },
+    { label: "Total Plants", value: totalPlants, color: "text-green-700", bg: "bg-green-50", icon: FaLeaf, border: "border-green-200" },
+    { label: "Categories", value: totalCategories, color: "text-blue-600", bg: "bg-blue-50", icon: FiPackage, border: "border-blue-200" },
+    { label: "Growth Rate", value: growthRate, color: "text-yellow-600", bg: "bg-yellow-50", icon: FiTrendingUp, border: "border-yellow-200" },
+    { label: "Health Score", value: healthScore, color: "text-purple-600", bg: "bg-purple-50", icon: FiHeart, border: "border-purple-200" },
   ];
 
-  const monthlyData = getMonthlyData();
+  const monthlyData = getMonthlyCounts();
   const categoryData = getCategoryData();
-  const revenueData = getMonthlyRevenue();
   const recentActivity = getRecentActivity();
 
   if (loading) {
@@ -338,29 +257,24 @@ export default function DashboardPage() {
                     <AreaChart data={monthlyData}>
                       <defs>
                         <linearGradient id="colorPlants" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
                           <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} />
-                      <YAxis stroke="#9ca3af" fontSize={10} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                      <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "white",
                           border: "1px solid #e5e7eb",
-                          borderRadius: "8px",
+                          borderRadius: "10px",
                           padding: "8px 12px",
                           fontSize: "12px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                         }}
                       />
-                      <Area
-                        type="monotone"
-                        dataKey="plants"
-                        stroke="#22c55e"
-                        strokeWidth={2}
-                        fill="url(#colorPlants)"
-                      />
+                      <Area type="monotone" dataKey="count" name="Plants" stroke="#16a34a" strokeWidth={2.5} fill="url(#colorPlants)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -369,30 +283,32 @@ export default function DashboardPage() {
               <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm border hover:shadow-lg transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 md:mb-6">
                   <div>
-                    <h3 className="text-base md:text-lg font-semibold text-gray-800">Revenue</h3>
-                    <p className="text-xs md:text-sm text-gray-500">Monthly revenue ($)</p>
+                    <h3 className="text-base md:text-lg font-semibold text-gray-800">Plants Added</h3>
+                    <p className="text-xs md:text-sm text-gray-500">Per month this year</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span className="text-xs text-gray-600">Revenue</span>
+                    <span className="text-xs text-gray-600">Count</span>
                   </div>
                 </div>
                 <div className="h-48 sm:h-56 md:h-72">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} />
-                      <YAxis stroke="#9ca3af" fontSize={10} />
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                      <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip
+                        cursor={{ fill: "rgba(59,130,246,0.06)" }}
                         contentStyle={{
                           backgroundColor: "white",
                           border: "1px solid #e5e7eb",
-                          borderRadius: "8px",
+                          borderRadius: "10px",
                           padding: "8px 12px",
                           fontSize: "12px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                         }}
                       />
-                      <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="count" name="Plants" fill="#3b82f6" radius={[8, 8, 0, 0]} maxBarSize={36} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -409,36 +325,37 @@ export default function DashboardPage() {
                         data={categoryData}
                         cx="50%"
                         cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => {
-                          const percentage = percent ? (percent * 100).toFixed(0) : "0";
-                          return `${name} ${percentage}%`;
-                        }}
-                        outerRadius={60}
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={3}
+                        cornerRadius={6}
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        {categoryData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="white" strokeWidth={2} />
                         ))}
                       </Pie>
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "white",
                           border: "1px solid #e5e7eb",
-                          borderRadius: "8px",
+                          borderRadius: "10px",
                           padding: "8px 12px",
                           fontSize: "12px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                         }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 mt-3 md:mt-4">
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 md:mt-4">
                   {categoryData.map((item, index) => (
                     <div key={index} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 md:w-3 md:h-3 rounded-full" style={{ backgroundColor: COLORS[index] }}></div>
-                      <span className="text-xs text-gray-600">{item.name}</span>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                      <span className="text-xs text-gray-600">
+                        {item.name} <span className="text-gray-400">({item.value})</span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -448,30 +365,31 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-4 md:mb-6">
                   <h3 className="text-base md:text-lg font-semibold text-gray-800">Recent Activity</h3>
                   <button
-                    onClick={() => router.push("/explore")}
+                    onClick={() => router.push("/dashboard/my-plants")}
                     className="text-xs md:text-sm text-green-600 hover:text-green-700 font-medium"
                   >
                     View All
                   </button>
                 </div>
-                <div className="space-y-2 md:space-y-4">
+                <div className="space-y-2 md:space-y-3">
                   {recentActivity.length > 0 ? (
                     recentActivity.map((activity) => (
                       <div
                         key={activity.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 md:p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
+                        className="flex items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 rounded-xl hover:bg-green-50/60 transition-all"
                       >
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <div className="p-1.5 md:p-2 rounded-lg bg-green-100">
-                            <FaLeaf className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 rounded-lg bg-green-100 shrink-0">
+                            <FaLeaf className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-600" />
                           </div>
-                          <div>
-                            <p className="text-xs md:text-sm font-medium text-gray-800">{activity.action}</p>
-                            <p className="text-[10px] md:text-xs text-gray-500">{activity.time}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs md:text-sm font-medium text-gray-800 truncate">{activity.title}</p>
+                            <p className="text-[10px] md:text-xs text-gray-500">{activity.category}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] md:text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 self-start sm:self-center">
-                          ADDED
+                        <span className="flex items-center gap-1 text-[10px] md:text-xs text-gray-400 shrink-0">
+                          <FiClock className="w-3 h-3" />
+                          {activity.time}
                         </span>
                       </div>
                     ))
