@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "@/lib/auth-client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { FaLeaf } from "react-icons/fa";
 import { LuSprout, LuLayoutDashboard, LuLogOut, LuUser } from "react-icons/lu";
@@ -16,7 +16,8 @@ const links = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, refetch } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -31,14 +32,28 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      await refetch();
+      setIsDropdownOpen(false);
+      setIsOpen(false);
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-green-700">
-                      <div className="p-3 bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg shadow-green-700/20">
-                        <FaLeaf className="w-4 h-4 text-white" />
-                      </div>
-                      PlantCare
+          <div className="p-3 bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg shadow-green-700/20">
+            <FaLeaf className="w-4 h-4 text-white" />
+          </div>
+          PlantCare
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
@@ -76,20 +91,29 @@ export default function Navbar() {
                       <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
                     </div>
                   </div>
-                  <Link href="/dashboard" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-green-700">
+                  <Link 
+                    href="/dashboard" 
+                    onClick={() => setIsDropdownOpen(false)} 
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-green-700"
+                  >
                     <LuLayoutDashboard size={16} /> Dashboard
                   </Link>
-                  <button onClick={() => { signOut(); setIsDropdownOpen(false); }} className="flex items-center gap-2 text-sm text-left text-red-600 font-medium">
+                  <button 
+                    onClick={handleLogout} 
+                    className="flex items-center gap-2 text-sm text-left text-red-600 font-medium hover:text-red-700"
+                  >
                     <LuLogOut size={16} /> Logout
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <>
-              <Link href="/login" className="text-green-700 font-medium">Login</Link>
-              <Link href="/register" className="bg-green-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-800 transition">Register</Link>
-            </>
+            !isAuthPage && (
+              <>
+                <Link href="/login" className="text-green-700 font-medium">Login</Link>
+                <Link href="/register" className="bg-green-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-800 transition">Register</Link>
+              </>
+            )
           )}
         </div>
 
@@ -118,15 +142,17 @@ export default function Navbar() {
               <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-2 text-green-700 font-bold">
                 <LuLayoutDashboard size={18} /> Dashboard
               </Link>
-              <button onClick={() => signOut()} className="flex items-center gap-2 text-red-600 text-left font-medium">
+              <button onClick={handleLogout} className="flex items-center gap-2 text-red-600 text-left font-medium">
                 <LuLogOut size={18} /> Logout
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              <Link href="/login" onClick={() => setIsOpen(false)} className="font-medium">Login</Link>
-              <Link href="/register" onClick={() => setIsOpen(false)} className="text-green-700 font-bold">Register</Link>
-            </div>
+            !isAuthPage && (
+              <div className="flex flex-col gap-2">
+                <Link href="/login" onClick={() => setIsOpen(false)} className="font-medium">Login</Link>
+                <Link href="/register" onClick={() => setIsOpen(false)} className="text-green-700 font-bold">Register</Link>
+              </div>
+            )
           )}
         </div>
       )}
